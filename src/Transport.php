@@ -32,8 +32,9 @@ class Transport
 
     /**
      * Transport constructor.
-     * @param RequestInterface $request
-     * @param $options
+     *
+     * @param RequestInterface $request instance
+     * @param object           $options flags
      */
     public function __construct(RequestInterface $request, $options)
     {
@@ -47,6 +48,11 @@ class Transport
         $this->createConnection();
     }
 
+    /**
+     * Create stream context
+     *
+     * @return resource
+     */
     private function createContext()
     {
         return stream_context_create([
@@ -65,9 +71,18 @@ class Transport
         ]);
     }
 
+    /**
+     * Create socket stream connection
+     *
+     * @return void
+     */
     private function createConnection()
     {
-        $transport = $this->request->getUri()->getScheme() === 'https' ? 'ssl' : 'tcp';
+        $errno = $errstr = null;
+
+        $transport = $this->request->getUri()->getScheme() === 'https'
+            ? 'ssl'
+            : 'tcp';
 
         $port = $this->request->getUri()->getPort();
         if (!$port) {
@@ -82,26 +97,52 @@ class Transport
         $flags   = STREAM_CLIENT_CONNECT;
         $context = $this->createContext();
 
-        if (false === ($this->connection = @stream_socket_client($host, $errno, $errstr, $timeout, $flags, $context))) {
-            throw NetworkException::factory($this->request, $errstr . ' (' . (int) $errno . ')');
+        $arguments = [$host, $errno, $errstr, $timeout, $flags, $context];
+
+        if (false === ($this->connection = @stream_socket_client(...$arguments))) {
+            throw NetworkException::factory(
+                $this->request,
+                $errstr . ' (' . (int) $errno . ')'
+            );
         }
 
         stream_set_chunk_size($this->connection, HttpClient::BUFFER_SIZE);
         stream_set_blocking($this->connection, true);
     }
 
+    /**
+     * Send data to socket stream
+     *
+     * @param mixed $data to send
+     *
+     * @return void
+     */
     public function send($data)
     {
-        if (-1 === @stream_socket_sendto($this->connection, $data)) {
-            throw NetworkException::factory($this->request, error_get_last()['message']);
+        if (-1 === @stream_socket_sendto($this->connection, (string) $data)) {
+            throw NetworkException::factory(
+                $this->request,
+                error_get_last()['message']
+            );
         }
     }
 
-    public function readMessage()
+    /**
+     * Read header message from socket stream
+     *
+     * @return string
+     */
+    public function readMessage(): string
     {
         $message = '';
         while (!stream_get_meta_data($this->connection)['eof']) {
             $symbol = stream_get_contents($this->connection, 1);
+            if (false === $symbol) {
+                throw NetworkException::factory(
+                    $this->request,
+                    'Cannot read data from socket stream'
+                );
+            }
 
             $message .= $symbol;
             if (HttpClient::CRLF . HttpClient::CRLF === substr($message, -4)) {
@@ -112,15 +153,28 @@ class Transport
         return rtrim($message, HttpClient::CRLF);
     }
 
-    public function createBodyStream(array $options = [])
+    /**
+     * Create body stream
+     *
+     * @param array $options of stream
+     *
+     * @return SocketStream
+     */
+    public function createBodyStream(array $options = []): SocketStream
     {
         return new SocketStream($this->connection, $options);
     }
 
+    /**
+     * Close socket stream connection
+     *
+     * @return void
+     */
     public function __destruct()
     {
         if ($this->connection) {
-            stream_socket_shutdown($this->connection, STREAM_SHUT_WR);
+            stream_socket_shutdown($this->connection, STREAM_SHUT_RDWR);
+            unset($this->connection);
         }
     }
 }

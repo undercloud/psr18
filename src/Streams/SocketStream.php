@@ -15,6 +15,8 @@ use Psr\Http\Message\StreamInterface;
  */
 class SocketStream implements StreamInterface
 {
+    use MultipartHeaderTrait;
+
     /**
      * @var resource
      */
@@ -169,7 +171,7 @@ class SocketStream implements StreamInterface
         $mode = $this->getMetadata('mode');
 
         return (
-            strstr($mode, 'x')
+               strstr($mode, 'x')
             or strstr($mode, 'w')
             or strstr($mode, 'c')
             or strstr($mode, 'a')

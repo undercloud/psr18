@@ -5,6 +5,7 @@ use ArrayIterator;
 use RuntimeException;
 use Psr\Http\Message\StreamInterface;
 use Undercloud\Psr18\HttpClient;
+use Undercloud\Psr18\Misc;
 
 /**
  * Class MultipartStream
@@ -42,13 +43,13 @@ class MultipartStream implements StreamInterface
      */
     private $patterns = [
         'plain' => (
-            'Content-Disposition: form-data; name="%s"' .
+            'Content-Disposition: form-data; name="%s"%s' .
             HttpClient::CRLF . HttpClient::CRLF .
             '%s'
         ),
         'file' => (
-            'Content-Disposition: form-data; name="%s"; filename="%s"' . HttpClient::CRLF .
-            'Content-Type: %s' . HttpClient::CRLF . HttpClient::CRLF
+            'Content-Disposition: form-data; name="%s"; filename="%s"%s' .
+            HttpClient::CRLF . HttpClient::CRLF
         )
     ];
 
@@ -64,19 +65,31 @@ class MultipartStream implements StreamInterface
         $data = $this->arrayToPlain($data);
         if ($data) {
             foreach ($data as $key => $value) {
-                $isFile = $value instanceof FileStream;
-                $pattern = $this->patterns[$isFile ? 'file' : 'plain'];
+                if ($value instanceof MultipartStream) {
+                    throw new RuntimeException(MultipartStream::class . ' disabled in nested multipart data');
+                }
 
-                $this->arrayIterator->append(
-                    new TextStream(
-                        '--' . $this->getBoundary() . HttpClient::CRLF .
-                        (
-                            $isFile
-                                ? sprintf($pattern, $key, $value->getClientFilename(), $value->getClientMediaType())
-                                : sprintf($pattern, $key, !($value instanceof StreamInterface) ? $value : '')
-                        )
-                    )
+                $isFileStream = $value instanceof FileStream;
+                $pattern = $this->patterns[$isFileStream ? 'file' : 'plain'];
+
+                $metaHeader = '';
+                if ($value instanceof SocketStream) {
+                    $metaHeader = Misc::serializePsr7Headers($value->getHeaders());
+                }
+
+                if ($metaHeader) {
+                    $metaHeader = HttpClient::CRLF . $metaHeader;
+                }
+
+                $meta = '--' . $this->getBoundary() . HttpClient::CRLF;
+                $meta .= (
+                    $isFileStream
+                        ? sprintf($pattern, $key, $value->getClientFileName(), $metaHeader)
+                        : sprintf($pattern, $key, $metaHeader, !($value instanceof StreamInterface) ? $value : '')
                 );
+
+                $metaStream = new TextStream($meta);
+                $this->arrayIterator->append($metaStream);
 
                 if ($value instanceof StreamInterface) {
                     $this->arrayIterator->append($value);
@@ -199,7 +212,7 @@ class MultipartStream implements StreamInterface
      */
     public function tell()
     {
-        throw new RuntimeException();
+        throw new RuntimeException('Cannot get current position');
     }
 
     /**
@@ -215,7 +228,7 @@ class MultipartStream implements StreamInterface
      */
     public function write($string)
     {
-        throw new RuntimeException();
+        throw new RuntimeException('Stream does not support writing');
     }
 
     /**

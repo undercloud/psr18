@@ -21,18 +21,12 @@ class FileStream extends SocketStream
     private $filename = '';
 
     /**
-     * @var string
-     */
-    private $mime = '';
-
-    /**
      * FileStream constructor.
      *
      * @param string      $path     to file
      * @param string|null $filename client file name
-     * @param string|null $mime     client mime type
      */
-    public function __construct(string $path, string $filename = '', string $mime = '')
+    public function __construct(string $path, string $filename = '')
     {
         if (false === ($stream = @fopen($path, 'rb'))) {
             throw new InvalidArgumentException(
@@ -44,17 +38,16 @@ class FileStream extends SocketStream
             $filename = basename($path);
         }
 
-        if (empty($mime)) {
-            $mime = (new finfo)->file($path, FILEINFO_MIME_TYPE);
-            if (false === $mime) {
-                $mime = 'application/binary';
-            }
-        }
-
         $this->filename = $filename;
-        $this->mime     = $mime;
 
         parent::__construct($stream);
+
+        $mime = (new finfo)->file($path, FILEINFO_MIME_TYPE);
+        if (false === $mime) {
+            $mime = 'application/binary';
+        }
+
+        $this->withHeader('Content-Type', $mime);
     }
 
     /**
@@ -65,15 +58,5 @@ class FileStream extends SocketStream
     public function getClientFilename(): string
     {
         return $this->filename;
-    }
-
-    /**
-     * Get client media type
-     *
-     * @return string|null
-     */
-    public function getClientMediaType(): string
-    {
-        return $this->mime;
     }
 }

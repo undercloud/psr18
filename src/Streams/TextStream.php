@@ -17,8 +17,8 @@ class TextStream extends SocketStream
     /**
      * TextStream constructor.
      *
-     * @param string $stream
-     * @param array  $options
+     * @param string $stream  value
+     * @param array  $options params
      */
     public function __construct(string $stream, array $options = [])
     {
@@ -41,5 +41,7 @@ class TextStream extends SocketStream
         }
 
         parent::__construct($stream);
+
+        $this->withHeader('Content-Type', $options->mime);
     }
 }

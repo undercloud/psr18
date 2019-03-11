@@ -17,8 +17,8 @@ class JsonStream extends TextStream
     /**
      * JsonStream constructor.
      *
-     * @param mixed $data
-     * @param int   $encodingOptions
+     * @param mixed $data            to encode
+     * @param int   $encodingOptions encoding options
      *
      * <code>
      * JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES
@@ -27,17 +27,18 @@ class JsonStream extends TextStream
     public function __construct($data, $encodingOptions = 79)
     {
         $json = $this->encodeJson($data, $encodingOptions);
+        $mime = 'application/json';
 
-        parent::__construct($json, [
-            'mime' => 'application/json'
-        ]);
+        parent::__construct($json);
+
+        $this->withHeader('Content-Type', $mime);
     }
 
     /**
      * Encode JSON
      *
-     * @param  mixed $data             to encode
-     * @param  int    $encodingOptions encoding options
+     * @param  mixed $data            to encode
+     * @param  int   $encodingOptions encoding options
      *
      * @throws InvalidArgumentException
      *

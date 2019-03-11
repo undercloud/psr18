@@ -3,6 +3,15 @@ namespace Undercloud\Psr18;
 
 use Psr\Http\Message\RequestInterface;
 
+/**
+ * Trait ExceptionTrait
+ *
+ * @category Psr18HttpClient
+ * @package  Undercloud\Psr18
+ * @author   undercloud <lodashes@gmail.com>
+ * @license  https://opensource.org/licenses/MIT MIT
+ * @link     http://github.com/undercloud/psr18
+ */
 trait ExceptionTrait
 {
     /**
@@ -11,6 +20,8 @@ trait ExceptionTrait
     private $request;
 
     /**
+     * Exception factory
+     *
      * @param RequestInterface $request instance
      * @param string           $message error
      * @param mixed            ...$args placeholder
@@ -27,7 +38,11 @@ trait ExceptionTrait
     }
 
     /**
+     * Set request instance
+     *
      * @param RequestInterface $request instance
+     *
+     * @return void
      */
     public function setRequest(RequestInterface $request)
     {
@@ -35,6 +50,8 @@ trait ExceptionTrait
     }
 
     /**
+     * Set request instance
+     *
      * @return RequestInterface
      */
     public function getRequest(): RequestInterface
