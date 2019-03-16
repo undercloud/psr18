@@ -66,12 +66,6 @@ class MultipartStream implements StreamInterface
 
         $data = $this->arrayToPlain($data);
         foreach ($data as $key => $value) {
-            if ($value instanceof MultipartStream) {
-                throw new RuntimeException(
-                    MultipartStream::class . ' disabled in nested multipart data'
-                );
-            }
-
             $isFileStream = $value instanceof FileStream;
             $pattern = $this->patterns[$isFileStream ? 'file' : 'plain'];
 
@@ -124,6 +118,12 @@ class MultipartStream implements StreamInterface
     {
         $result = [];
         foreach ($data as $key => $value) {
+            if ($value instanceof MultipartStream) {
+                throw new RuntimeException(
+                    MultipartStream::class . ' disabled in nested multipart data'
+                );
+            }
+
             if ($prefix) {
                 $index = $prefix . '[' . $key . ']';
             } else {
@@ -158,6 +158,10 @@ class MultipartStream implements StreamInterface
      */
     public function read($length)
     {
+        if (!$this->streamCursor) {
+            return '';
+        }
+
         $data = $this->streamCursor->read($length);
         $bytes = strlen($data);
         if ($bytes < $length) {
@@ -183,6 +187,10 @@ class MultipartStream implements StreamInterface
      */
     public function eof()
     {
+        if (!$this->streamCursor) {
+            return true;
+        }
+
         return (
             $this->streamCursor
             and $this->streamCursor->eof()
@@ -276,18 +284,18 @@ class MultipartStream implements StreamInterface
     }
 
     /**
-     * {@inheritdoc}
+     * Get boundary unique identifier
      */
     public function getBoundary()
     {
         if (null === $this->boundary) {
-            $alph = implode(array_merge(
+            $abc = implode(array_merge(
                 range('A', 'Z'),
                 range('a', 'z'),
                 range(0, 9)
             ));
 
-            $this->boundary = substr(str_shuffle($alph), -12);
+            $this->boundary = substr(str_shuffle($abc), -12);
         }
 
         return $this->boundary;

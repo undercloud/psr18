@@ -30,7 +30,9 @@ trait MultipartHeaderTrait
     {
         $name = strtolower($name);
         $name = explode('-', $name);
-        $name = array_map('ucfirst', $name);
+        $name = array_map(function ($word) {
+            return ucfirst($word);
+        }, $name);
 
         return implode('-', $name);
     }

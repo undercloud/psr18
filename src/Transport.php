@@ -72,9 +72,9 @@ class Transport
         });
 
         if (!$sslTransports) {
+            $transports = implode(', ', $transports);
             throw new RuntimeException(
-                'No SSL/TLS transports found, avail transports is: [' .
-                implode(',', $transports . ']')
+                'No SSL/TLS transports found, avail transports is: [' . $transports . ']'
             );
         }
 

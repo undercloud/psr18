@@ -13,6 +13,8 @@ use Psr\Http\Message\RequestInterface;
  * @author   undercloud <lodashes@gmail.com>
  * @license  https://opensource.org/licenses/MIT MIT
  * @link     http://github.com/undercloud/psr18
+ *
+ * @method __construct($message, $code = 0, $previous = null)
  */
 trait ExceptionTrait
 {
