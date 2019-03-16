@@ -1,4 +1,6 @@
 <?php
+declare(strict_types = 1);
+
 namespace Undercloud\Psr18;
 
 use Exception;

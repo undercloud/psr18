@@ -1,4 +1,6 @@
 <?php
+declare(strict_types = 1);
+
 namespace Undercloud\Psr18\Streams;
 
 use ArrayIterator;
@@ -63,41 +65,42 @@ class MultipartStream implements StreamInterface
         $this->arrayIterator = new ArrayIterator();
 
         $data = $this->arrayToPlain($data);
-        if ($data) {
-            foreach ($data as $key => $value) {
-                if ($value instanceof MultipartStream) {
-                    throw new RuntimeException(MultipartStream::class . ' disabled in nested multipart data');
-                }
-
-                $isFileStream = $value instanceof FileStream;
-                $pattern = $this->patterns[$isFileStream ? 'file' : 'plain'];
-
-                $metaHeader = '';
-                if ($value instanceof SocketStream) {
-                    $metaHeader = Misc::serializePsr7Headers($value->getHeaders());
-                }
-
-                if ($metaHeader) {
-                    $metaHeader = HttpClient::CRLF . $metaHeader;
-                }
-
-                $meta = '--' . $this->getBoundary() . HttpClient::CRLF;
-                $meta .= (
-                    $isFileStream
-                        ? sprintf($pattern, $key, $value->getClientFileName(), $metaHeader)
-                        : sprintf($pattern, $key, $metaHeader, !($value instanceof StreamInterface) ? $value : '')
+        foreach ($data as $key => $value) {
+            if ($value instanceof MultipartStream) {
+                throw new RuntimeException(
+                    MultipartStream::class . ' disabled in nested multipart data'
                 );
-
-                $metaStream = new TextStream($meta);
-                $this->arrayIterator->append($metaStream);
-
-                if ($value instanceof StreamInterface) {
-                    $this->arrayIterator->append($value);
-                }
-
-                $this->arrayIterator->append(new TextStream(HttpClient::CRLF));
             }
 
+            $isFileStream = $value instanceof FileStream;
+            $pattern = $this->patterns[$isFileStream ? 'file' : 'plain'];
+
+            $metaHeader = ($value instanceof SocketStream)
+                ? Misc::serializePsr7Headers($value->getHeaders())
+                : '';
+
+            if ($metaHeader) {
+                $metaHeader = HttpClient::CRLF . $metaHeader;
+            }
+
+            $meta = '--' . $this->getBoundary() . HttpClient::CRLF;
+            $meta .= (
+                $isFileStream
+                    ? sprintf($pattern, $key, $value->getClientFileName(), $metaHeader)
+                    : sprintf($pattern, $key, $metaHeader, !($value instanceof StreamInterface) ? $value : '')
+            );
+
+            $metaStream = new TextStream($meta);
+            $this->arrayIterator->append($metaStream);
+
+            if ($value instanceof StreamInterface) {
+                $this->arrayIterator->append($value);
+            }
+
+            $this->arrayIterator->append(new TextStream(HttpClient::CRLF));
+        }
+
+        if ($data) {
             $this->arrayIterator->append(
                 new TextStream(
                     '--' . $this->getBoundary() . '--'
@@ -119,7 +122,7 @@ class MultipartStream implements StreamInterface
      */
     private function arrayToPlain(array $data, $prefix = '')
     {
-        $result = array();
+        $result = [];
         foreach ($data as $key => $value) {
             if ($prefix) {
                 $index = $prefix . '[' . $key . ']';

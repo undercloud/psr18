@@ -1,4 +1,6 @@
 <?php
+declare(strict_types = 1);
+
 namespace Undercloud\Psr18\Streams;
 
 use InvalidArgumentException;
@@ -37,8 +39,8 @@ class JsonStream extends TextStream
     /**
      * Encode JSON
      *
-     * @param  mixed $data            to encode
-     * @param  int   $encodingOptions encoding options
+     * @param mixed $data            to encode
+     * @param int   $encodingOptions encoding options
      *
      * @throws InvalidArgumentException
      *

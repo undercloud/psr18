@@ -1,4 +1,6 @@
 <?php
+declare(strict_types = 1);
+
 namespace Undercloud\Psr18\Streams;
 
 use RuntimeException;
@@ -53,7 +55,7 @@ class SocketStream implements StreamInterface
     public function tell()
     {
         if (false === ($position = @ftell($this->stream))) {
-            throw new RuntimeException();
+            throw new RuntimeException('Cannot get stream offset');
         }
 
         return $position;
@@ -104,7 +106,7 @@ class SocketStream implements StreamInterface
     public function read($length)
     {
         if (false === ($data = fread($this->stream, $length))) {
-            throw new RuntimeException();
+            throw new RuntimeException('Cannot read from stream');
         }
 
         return $data;
@@ -185,7 +187,7 @@ class SocketStream implements StreamInterface
     public function write($string)
     {
         if (false === ($length = fwrite($this->stream, $string))) {
-            throw new RuntimeException();
+            throw new RuntimeException('Cannot write to stream');
         }
 
         return $length;

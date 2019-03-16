@@ -1,9 +1,12 @@
 <?php
+declare(strict_types = 1);
+
 namespace Undercloud\Psr18;
 
 use Psr\Http\Client\ClientInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\UriInterface;
 use Undercloud\Psr18\Streams\JsonStream;
 use Undercloud\Psr18\Streams\MultipartStream;
 
@@ -23,25 +26,39 @@ class HttpClient implements ClientInterface
     const CRLF = "\r\n";
 
     /**
-     * @var ResponseInterface
-     */
-    private $response;
-
-    /**
      * @var object
      */
     private $options;
 
     /**
+     * @var ResponseInterface
+     */
+    private $response;
+
+    /**
+     * @var Transport
+     */
+    private $transport;
+
+    /**
      * HttpClient constructor.
      *
      * @param ResponseInterface $response prototype
-     * @param array             $options  flags
+     * @param array $options flags
      */
     public function __construct(ResponseInterface $response, array $options = [])
     {
-        $this->response = $response;
-        $this->options = (object) $options;
+        $this->options   = (object) $options;
+        $this->response  = $response;
+        $this->transport = new Transport($options);
+
+        if (!isset($this->options->followLocation)) {
+            $this->options->followLocation = true;
+        }
+
+        if (!isset($this->options->maxRedirects)) {
+            $this->options->maxRedirects = 5;
+        }
     }
 
     /**
@@ -76,7 +93,7 @@ class HttpClient implements ClientInterface
 
         $body = $request->getBody();
 
-        if ($body->getSize() and !in_array($method, ['POST','PUT','PATCH'])) {
+        if ($body->getSize() and !in_array($method, ['POST', 'PUT', 'PATCH'])) {
             throw RequestException::factory(
                 $request,
                 'Method %s does not support body sending',
@@ -96,7 +113,7 @@ class HttpClient implements ClientInterface
         }
 
         $request = $request
-            ->withHeader('Content-Length', (string) ((int) $body->getSize()))
+            ->withHeader('Content-Length', (string)((int)$body->getSize()))
             ->withHeader('Connection', 'close');
 
         $message .= Misc::serializePsr7Headers($request->getHeaders());
@@ -118,11 +135,12 @@ class HttpClient implements ClientInterface
         foreach (explode(self::CRLF, $message) as $line) {
             if (0 === strpos($line, 'HTTP/')) {
                 $line = substr($line, 5);
-                list($version,$code,$reasonPhrase) = explode(' ', $line);
+                list($version, $code, $reasonPhrase) = explode(' ', $line);
             } else {
-                list($name, $value) = explode(':', $line);
+                list($name, $value) = explode(':', $line, 2);
 
                 $name = trim($name);
+                $name = strtolower($name);
                 $value = trim($value);
 
                 $headers[$name] = $value;
@@ -130,6 +148,46 @@ class HttpClient implements ClientInterface
         }
 
         return [$version, $code, $reasonPhrase, $headers];
+    }
+
+    /**
+     * Redirect request 3xx
+     *
+     * @param RequestInterface $request instance
+     * @param string           $target  URL
+     *
+     * @return ResponseInterface
+     */
+    private function redirect(RequestInterface $request, string $target): ResponseInterface
+    {
+        if (!$this->options->maxRedirects) {
+            throw RequestException::factory($request, 'Too many redirects');
+        }
+
+        $this->options->maxRedirects--;
+
+        if (Misc::isRelativeUrl($target)) {
+            list($path, $query) = Misc::extractRelativeUrlComponents($target);
+            $uri = $request
+                ->getUri()
+                ->withPath($path)
+                ->withQuery($query);
+        } else {
+            $uriPrototype = get_class($request->getUri());
+            /** @var UriInterface $uri */
+            $uri = new $uriPrototype($target);
+            $request = $request->withHeader('Host', $uri->getHost());
+            $target = (
+                ($uri->getPath() ? $uri->getPath() : '/') .
+                ($uri->getQuery() ? ('?' . $uri->getQuery()) : '')
+            );
+        }
+
+        $request = $request
+            ->withUri($uri)
+            ->withRequestTarget($target);
+
+        return $this->sendRequest($request);
     }
 
     /**
@@ -143,22 +201,29 @@ class HttpClient implements ClientInterface
     {
         $message = $this->buildMessage($request);
 
-        $transport = new Transport($request, $this->options);
-        $transport->send($message);
+        $this->transport->setRequest($request);
+        $this->transport->connect();
+        $this->transport->send($message);
 
         $body = $request->getBody();
         while (!$body->eof()) {
             $buffer = $body->read(self::BUFFER_SIZE);
-            $transport->send($buffer);
+            $this->transport->send($buffer);
         }
 
-        $message = $transport->readMessage();
+        $message = $this->transport->readMessage();
 
         if (!$message) {
             throw RequestException::factory($request, 'Empty response header');
         }
 
         list($version, $code, $reasonPhrase, $headers) = $this->parseMessage($message);
+
+        if ($code >= 300 and $code <= 308) {
+            if ($headers['location'] and $this->options->followLocation) {
+                return $this->redirect($request, $headers['location']);
+            }
+        }
 
         $this->response = $this->response
             ->withProtocolVersion($version)
@@ -168,7 +233,7 @@ class HttpClient implements ClientInterface
             $this->response = $this->response->withHeader($name, $value);
         }
 
-        $body = $transport->createBodyStream([
+        $body = $this->transport->createBodyStream([
             'contentLength' => (int) $this->response->getHeaderLine('Content-Length')
         ]);
 

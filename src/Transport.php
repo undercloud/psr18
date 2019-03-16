@@ -1,6 +1,9 @@
 <?php
+declare(strict_types = 1);
+
 namespace Undercloud\Psr18;
 
+use RuntimeException;
 use Psr\Http\Message\RequestInterface;
 use Undercloud\Psr18\Streams\SocketStream;
 
@@ -33,42 +36,51 @@ class Transport
     /**
      * Transport constructor.
      *
-     * @param RequestInterface $request instance
-     * @param object           $options flags
+     * @param array $options flags
      */
-    public function __construct(RequestInterface $request, $options)
+    public function __construct(array $options)
     {
+        $options = (object) $options;
+
         if (!isset($options->timeout)) {
             $options->timeout = 30;
         }
 
-        $this->request = $request;
         $this->options = $options;
-
-        $this->createConnection();
     }
 
     /**
-     * Create stream context
+     * Set request instance
      *
-     * @return resource
+     * @param RequestInterface $request instance
+     *
+     * @return void
      */
-    private function createContext()
+    public function setRequest(RequestInterface $request)
     {
-        return stream_context_create([
-            'ssl' => [
-                'verify_peer' => false,
-                'verify_peer_name' => false,
-                'verify_host' => true,
-                'allow_self_signed' => true
-            ],
-            'http' => [
-                'follow_location' => 1,
-                'ignore_errors' => 1,
-                'timeout' => $this->options->timeout,
-                'protocol_version' => $this->request->getProtocolVersion()
-            ]
-        ]);
+        $this->request = $request;
+    }
+
+    /**
+     * Get preferred SSL transport version
+     */
+    private function getPreferredSslProtocol(): string
+    {
+        $transports = stream_get_transports();
+        $sslTransports = array_filter($transports, function ($transport) {
+            return (0 === strpos($transport, 'ssl')) or (0 === strpos($transport, 'tls'));
+        });
+
+        if (!$sslTransports) {
+            throw new RuntimeException(
+                'No SSL/TLS transports found, avail transports is: [' .
+                implode(',', $transports . ']')
+            );
+        }
+
+        rsort($sslTransports);
+
+        return reset($sslTransports);
     }
 
     /**
@@ -76,37 +88,42 @@ class Transport
      *
      * @return void
      */
-    private function createConnection()
+    public function connect()
     {
-        $errno = $errstr = null;
+        $errno = $errorString = null;
+        $isSecure = $this->request->getUri()->getScheme() === 'https';
 
-        $transport = $this->request->getUri()->getScheme() === 'https'
-            ? 'ssl'
+        $transport = $isSecure
+            ? $this->options->sslProtocol ?? $this->getPreferredSslProtocol()
             : 'tcp';
 
         $port = $this->request->getUri()->getPort();
         if (!$port) {
-            $port = $this->request->getUri()->getScheme() === 'https' ? 443 : 80;
+            $port = $isSecure ? 443 : 80;
         }
 
         $host = $this->request->getUri()->getHost();
-        $host = gethostbyname($host);
-        $host = $transport . '://' . $host . ':' . $port;
+        $uri = $transport . '://' . $host . ':' . $port;
 
         $timeout = $this->options->timeout;
-        $flags   = STREAM_CLIENT_CONNECT;
-        $context = $this->createContext();
+        $flags = STREAM_CLIENT_CONNECT;
 
-        $arguments = [$host, $errno, $errstr, $timeout, $flags, $context];
+        $arguments = [$uri, $errno, $errorString, $timeout, $flags];
+        if ($isSecure) {
+            if (isset($this->options->ssl)) {
+                $arguments[] = stream_context_create([
+                    'ssl' => $this->options->ssl
+                ]);
+            }
+        }
 
-        if (false === ($this->connection = @stream_socket_client(...$arguments))) {
+        if (false === ($this->connection = stream_socket_client(...$arguments))) {
             throw NetworkException::factory(
                 $this->request,
-                $errstr . ' (' . (int) $errno . ')'
+                $errorString ? $errorString : 'Unknown network error'
             );
         }
 
-        stream_set_chunk_size($this->connection, HttpClient::BUFFER_SIZE);
         stream_set_blocking($this->connection, true);
     }
 
@@ -119,7 +136,7 @@ class Transport
      */
     public function send($data)
     {
-        if (-1 === @stream_socket_sendto($this->connection, (string) $data)) {
+        if (-1 === @fwrite($this->connection, (string) $data)) {
             throw NetworkException::factory(
                 $this->request,
                 error_get_last()['message']
@@ -136,7 +153,8 @@ class Transport
     {
         $message = '';
         while (!stream_get_meta_data($this->connection)['eof']) {
-            $symbol = stream_get_contents($this->connection, 1);
+            $symbol = fgetc($this->connection);
+
             if (false === $symbol) {
                 throw NetworkException::factory(
                     $this->request,
@@ -173,8 +191,7 @@ class Transport
     public function __destruct()
     {
         if ($this->connection) {
-            stream_socket_shutdown($this->connection, STREAM_SHUT_RDWR);
-            unset($this->connection);
+            fclose($this->connection);
         }
     }
 }
