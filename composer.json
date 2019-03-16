@@ -1,0 +1,21 @@
+{
+  "name": "undercloud/psr18",
+  "description": "PSR-18 HTTP Client",
+  "minimum-stability": "stable",
+  "license": "MIT",
+  "require-dev": {
+    "squizlabs/php_codesniffer": "3.3.0",
+    "phpmd/phpmd": "@stable"
+  },
+  "authors": [
+    {
+      "name": "undercloud",
+      "email": "lodashes@gmail.com"
+    }
+  ],
+  "require": {
+    "php": ">=7.1",
+    "ext-fileinfo": "*",
+    "ext-json": "*"
+  }
+}
