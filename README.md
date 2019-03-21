@@ -15,6 +15,9 @@ Implementation of https://www.php-fig.org/psr/psr-18/
 ## Requirements
 PHP 7.1+
 
+## License
+MIT
+
 ## Install
 `composer require undercloud/psr18`
 
@@ -84,6 +87,7 @@ $data = [
 ];
 
 $jsonStream = new Undercloud\Psr18\Streams\JsonStream($data, $encodingOptions = 79)
+
 // {"foo":"bar"}
 $jsonStream->getContents();
 ```
@@ -97,6 +101,28 @@ new Undercloud\Psr18\Streams\SocketStream($resource);
 ```
 
 ### MultipartStream
+
+```php
+new Undercloud\Psr18\Streams\MultipartStream([
+    'simple' => 'text',
+    'array' => ['foo','bar','baz'],
+    'base64' => => new Undercloud\Psr18\Streams\TextStream(
+        'iVBORw0KGgoAAAA...', [
+            'mime' => 'image/png',
+            'encoding' => 'base64'
+        ]
+    ),
+    'json' => new Undercloud\Psr18\Streams\JsonStream([
+        'foo' => 'bar
+    ]),
+    'photos' => [
+        new Undercloud\Psr18\Streams\FileStream('/path/to/01.jpg'),
+        new Undercloud\Psr18\Streams\FileStream('/path/to/02.jpg'),
+        new Undercloud\Psr18\Streams\FileStream('/path/to/03.jpg'),
+        ...
+    ]
+])
+```
 
 ### FileStream
 
