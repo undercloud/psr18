@@ -54,36 +54,82 @@ $responsePrototype = $httpClient->sendRequest($requestPrototype);
 ## Streams
 
 ### TextStream
+```php
+// simple text stream
+new Undercloud\Psr18\Streams\TextStream('PHP7 is Awesome')
+
+// with options
+$base64 = base64_encode('PHP7 is Awesome');
+
+new Undercloud\Psr18\Streams\TextStream($base64, [
+    'mime' => 'text/plain'
+    'encoding' => 'base64'
+])
+
+// URL encode
+$urlencode = urlencode('PHP7 is Awesome');
+
+new Undercloud\Psr18\Streams\TextStream($urlencode);
+```
 
 ### JsonStream
 
 ```php
-@param mixed $data            to encode
-@param int   $encodingOptions encoding options
-
 <code>
   JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES
 </code>
 
-new Undercloud\Psr18\Streams\JsonStream($data, $encodingOptions = 79)
+$data = [
+    'foo' => 'bar'  
+];
+
+$jsonStream = new Undercloud\Psr18\Streams\JsonStream($data, $encodingOptions = 79)
+// {"foo":"bar"}
+$jsonStream->getContents();
 ```
 
 ### SocketStream
+```php
+// fopen
+// stream_socket_client
+
+new Undercloud\Psr18\Streams\SocketStream($resource);
+```
 
 ### MultipartStream
 
 ### FileStream
 
 ```php
-@param string      $path     to file
-@param string|null $filename client file name
-
 new Undercloud\Psr18\Streams\FileStream($path, $filename = '')
 ```
 
 ### WrapStream
+```php
+// Third party stream
+
+new Undercloud\Psr18\Streams\WrapStream(
+    Psr\Http\Message\StreamInterface $stream
+);
+```
 
 ## Extra Multipart Headers
+
+All kind of streams:
+ - TextStream
+ - JsonStream
+ - SocketStream
+ - MultipartStream
+ - FileStream
+ - WrapStream  
+ 
+supports additional headers in multipart context
+```php
+new Undercloud\Psr18\Streams\MultipartStream([
+    'photo' => new Undercloud\Psr18\Streams\FileStream($path)
+        ->withHeader('Content-Transfer-Encoding', '8bit')   
+])
+```
 
 ## Options
 
