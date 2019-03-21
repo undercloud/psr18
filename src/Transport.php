@@ -112,7 +112,7 @@ class Transport
         if ($isSecure) {
             if (isset($this->options->ssl)) {
                 $arguments[] = stream_context_create([
-                    'ssl' => $this->options->ssl
+                    'ssl' => Misc::convertSslOptionsKeys($this->options->ssl)
                 ]);
             }
         }

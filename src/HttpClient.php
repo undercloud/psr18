@@ -41,6 +41,11 @@ class HttpClient implements ClientInterface
     private $transport;
 
     /**
+     * @var string
+     */
+    private $userAgent = "Psr18 Compatible HTTP Client";
+
+    /**
      * HttpClient constructor.
      *
      * @param ResponseInterface $response prototype
@@ -99,6 +104,10 @@ class HttpClient implements ClientInterface
                 'Method %s does not support body sending',
                 $method
             );
+        }
+
+        if (!$request->hasHeader('User-Agent')) {
+            $request = $request->withHeader('User-Agent', $this->userAgent);
         }
 
         if ($body instanceof JsonStream) {

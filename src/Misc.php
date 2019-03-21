@@ -65,4 +65,25 @@ class Misc
 
         return [$url['path'] ?? '/', $url['query'] ?? ''];
     }
+
+    /**
+     * Convert SSL options keys
+     *
+     * @param array $options params
+     *
+     * @return array
+     */
+    public static function convertSslOptionsKeys(array $options): array
+    {
+        $keys = array_keys($options);
+        $values = array_values($options);
+
+        $keys = array_map(function ($key) {
+            return preg_replace_callback('~[A-Z][a-z]~', function ($matches) {
+                return '_' . strtolower($matches[0]);
+            }, $key);
+        }, $keys);
+
+        return array_combine($keys, $values);
+    }
 }
