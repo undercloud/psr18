@@ -13,6 +13,11 @@
       "email": "lodashes@gmail.com"
     }
   ],
+  "autoload": {
+      "psr-4": {
+         "Undercloud\\Psr18\\": "src/"
+      }
+  },
   "require": {
     "php": ">=7.1",
     "ext-fileinfo": "*",
