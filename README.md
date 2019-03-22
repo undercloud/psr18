@@ -171,6 +171,13 @@ new Undercloud\Psr18\Streams\MultipartStream([
  The max number of redirects to follow. Value 1 or less means that no redirects are followed.
  Defaults to 5.
 
+ - **waitResponse** *(boolean)*  
+ Defaults to TRUE.
+ 
+ - **requestFullUri** *(boolean)*  
+ When set to TRUE, the entire URI will be used when constructing the request. (i.e. GET http://www.example.com/path/to/file.html HTTP/1.0). While this is a non-standard request format, some proxy servers require it.
+ Defaults to FALSE.
+ 
  - **ssl** *(array)*  
  SSL context options
 
