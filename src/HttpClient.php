@@ -53,8 +53,8 @@ class HttpClient implements ClientInterface
      */
     public function __construct(ResponseInterface $response, array $options = [])
     {
-        $this->options   = (object) $options;
-        $this->response  = $response;
+        $this->options = (object)$options;
+        $this->response = $response;
         $this->transport = new Transport($options);
 
         if (!isset($this->options->followLocation)) {
@@ -63,6 +63,14 @@ class HttpClient implements ClientInterface
 
         if (!isset($this->options->maxRedirects)) {
             $this->options->maxRedirects = 5;
+        }
+
+        if (!isset($this->options->waitResponse)) {
+            $this->options->waitResponse = true;
+        }
+
+        if (!isset($this->options->requestFullUri)) {
+            $this->options->requestFullUri = false;
         }
     }
 
@@ -89,7 +97,12 @@ class HttpClient implements ClientInterface
             $protocol = '1.1';
         }
 
-        $target = $request->getRequestTarget();
+        if ($this->options->requestFullUri) {
+            $target = (string) $request->getUri();
+        } else {
+            $target = $request->getRequestTarget();
+        }
+
         if (!$target) {
             $target = '/';
         }
@@ -218,6 +231,10 @@ class HttpClient implements ClientInterface
         while (!$body->eof()) {
             $buffer = $body->read(self::BUFFER_SIZE);
             $this->transport->send($buffer);
+        }
+
+        if (!$this->options->waitResponse) {
+            return $this->response;
         }
 
         $message = $this->transport->readMessage();
