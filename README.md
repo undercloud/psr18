@@ -11,6 +11,7 @@ Implementation of https://www.php-fig.org/psr/psr-18/
 * Body with multipart/form-data
 * Upload / Download huge files
 * SSL / TLS
+* Proxy
 
 ## Requirements
 PHP 7.1+
@@ -177,6 +178,14 @@ new Undercloud\Psr18\Streams\MultipartStream([
  - **requestFullUri** *(boolean)*  
  When set to TRUE, the entire URI will be used when constructing the request. (i.e. GET http://www.example.com/path/to/file.html HTTP/1.0). While this is a non-standard request format, some proxy servers require it.
  Defaults to FALSE.
+ 
+ - **proxy** *(string)*  
+ URI specifying address of proxy server. (e.g. tcp://proxy.example.com:5100).
+
+ 
+ - **sslProtocol** *(string)*  
+ One of `ssl`, `tls`, `tlsv1.0`, `tlsv1.1`, `tlsv1.2`
+ Defaults to max TLS version defined in **stream_get_transports**
  
  - **ssl** *(array)*  
  SSL context options
