@@ -72,6 +72,10 @@ class HttpClient implements ClientInterface
         if (!isset($this->options->requestFullUri)) {
             $this->options->requestFullUri = false;
         }
+
+        if (!isset($this->options->ssl)) {
+            $this->options->ssl = [];
+        }
     }
 
     /**
@@ -97,11 +101,9 @@ class HttpClient implements ClientInterface
             $protocol = '1.1';
         }
 
-        if ($this->options->requestFullUri) {
-            $target = (string) $request->getUri();
-        } else {
-            $target = $request->getRequestTarget();
-        }
+        $target = $this->options->requestFullUri
+            ? (string) $request->getUri()
+            : $request->getRequestTarget();
 
         if (!$target) {
             $target = '/';

@@ -84,13 +84,16 @@ class Transport
     }
 
     /**
-     * Create socket stream connection
+     * Built target URI
      *
-     * @return void
+     * @return string
      */
-    public function connect()
+    private function buildUri(): string
     {
-        $errno = $errorString = null;
+        if (isset($this->options->proxy)) {
+            return $this->options->proxy;
+        }
+
         $isSecure = $this->request->getUri()->getScheme() === 'https';
 
         $transport = $isSecure
@@ -105,16 +108,30 @@ class Transport
         $host = $this->request->getUri()->getHost();
         $uri = $transport . '://' . $host . ':' . $port;
 
+        return $uri;
+    }
+
+    /**
+     * Create socket stream connection
+     *
+     * @return void
+     */
+    public function connect()
+    {
+        $errno = $errorString = null;
+
+        $uri = $this->buildUri();
         $timeout = $this->options->timeout;
         $flags = STREAM_CLIENT_CONNECT;
 
         $arguments = [$uri, $errno, $errorString, $timeout, $flags];
-        if ($isSecure) {
-            if (isset($this->options->ssl)) {
-                $arguments[] = stream_context_create([
-                    'ssl' => Misc::convertSslOptionsKeys($this->options->ssl)
-                ]);
-            }
+
+        if ($this->options->ssl) {
+            $context['ssl'] = Misc::convertSslOptionsKeys($this->options->ssl);
+        }
+
+        if ($context) {
+            $arguments[] = stream_context_create($context);
         }
 
         if (false === ($this->connection = stream_socket_client(...$arguments))) {
@@ -136,6 +153,10 @@ class Transport
      */
     public function send($data)
     {
+        if ('' === $data) {
+            return;
+        }
+
         if (-1 === @fwrite($this->connection, (string) $data)) {
             throw NetworkException::factory(
                 $this->request,
