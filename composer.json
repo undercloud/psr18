@@ -5,7 +5,9 @@
   "license": "MIT",
   "require-dev": {
     "squizlabs/php_codesniffer": "3.3.0",
-    "phpmd/phpmd": "@stable"
+    "phpmd/phpmd": "@stable",
+    "phpunit/phpunit": "@stable",
+    "zendframework/zend-diactoros": "@stable"
   },
   "authors": [
     {
@@ -14,9 +16,14 @@
     }
   ],
   "autoload": {
-      "psr-4": {
-         "Undercloud\\Psr18\\": "src/"
-      }
+    "psr-4": {
+      "Undercloud\\Psr18\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Undercloud\\Psr18\\": "src/"
+    }
   },
   "require": {
     "php": ">=7.1",
