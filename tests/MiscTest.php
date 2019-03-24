@@ -19,7 +19,7 @@ final class MiscTest extends TestCase
 
         $inline = (
           "Host: google.com\r\n" .
-          "Content-Type: application/json, charset=utf-8"
+          "Content-Type: application/json, charset=utf-8\r\n"
         );
 
         $this->assertEquals($inline, Misc::serializePsr7Headers($head));
@@ -27,18 +27,23 @@ final class MiscTest extends TestCase
 
     public function testUriExtract()
     {
+        $extract = Misc::extractRelativeUrlComponents('');
+        $expect = ['/',''];
+
+        $this->assertEquals($expect, $extract);
+
         $extract = Misc::extractRelativeUrlComponents('?foo=bar');
-        $expect = ['/','?foo=bar'];
+        $expect = ['/','foo=bar'];
 
         $this->assertEquals($expect, $extract);
 
         $extract = Misc::extractRelativeUrlComponents('/?foo=bar');
-        $expect = ['/','?foo=bar'];
+        $expect = ['/','foo=bar'];
 
         $this->assertEquals($expect, $extract);
 
         $extract = Misc::extractRelativeUrlComponents('/path/to?foo=bar');
-        $expect = ['/path/to','?foo=bar'];
+        $expect = ['/path/to','foo=bar'];
 
         $this->assertEquals($expect, $extract);
     }
