@@ -1,5 +1,4 @@
 <?php
-
 declare(strict_types=1);
 
 use PHPUnit\Framework\TestCase;
@@ -28,7 +27,7 @@ final class MiscTest extends TestCase
     public function testUriExtract()
     {
         $extract = Misc::extractRelativeUrlComponents('');
-        $expect = ['/',''];
+        $expect = ['',''];
 
         $this->assertEquals($expect, $extract);
 
